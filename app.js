@@ -1,5 +1,6 @@
 const express = require("express");
 const bodyParser = require("body-parser");
+const feedRoutes = require("./routes/feed");
 
 const app = express();
 
@@ -13,6 +14,15 @@ app.use((req, res, next) => {
   );
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   next();
+});
+
+app.use("/feed", feedRoutes);
+
+app.use((req, res) => {
+  res.json({
+    status: "Error",
+    message: "Route does not exist",
+  });
 });
 
 app.listen(8080, () => {
