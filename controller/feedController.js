@@ -4,14 +4,29 @@ const path = require("path");
 const Post = require("./../models/post");
 
 exports.getFeeds = (req, res, next) => {
+  const page = req.query.page || 1;
+  const pageLimit = 2;
+  let totalItems;
   Post.find()
+    .countDocuments((count) => {
+      totalItems = count;
+      return Post.find()
+        .skip((page - 1) * pageLimit)
+        .limit(pageLimit);
+    })
     .then((posts) => {
       res.json({
         message: "Success",
         posts,
+        totalItems,
       });
     })
-    .catch(console.log);
+    .catch((err) => {
+      if (!error.statusCode) {
+        error.statusCode = 500;
+      }
+      next(err);
+    });
 };
 
 exports.postFeed = (req, res, next) => {
@@ -117,18 +132,25 @@ exports.putPost = (req, res, next) => {
 
 exports.deletePost = (req, res) => {
   const { postId } = req.body;
-  Post.findByIdAndDelete(postId).then((resp) => {
-    if (!resp) {
-      let error = new Error("No Post Found");
-      error.statusCode = 404;
-      throw error;
-    }
-    deleteFileHelper(resp.imageUrl);
-    res.json({
-      message: "Post Successfully Deleted",
-      post: resp,
+  Post.findByIdAndDelete(postId)
+    .then((resp) => {
+      if (!resp) {
+        let error = new Error("No Post Found");
+        error.statusCode = 404;
+        throw error;
+      }
+      deleteFileHelper(resp.imageUrl);
+      res.json({
+        message: "Post Successfully Deleted",
+        post: resp,
+      });
+    })
+    .catch((err) => {
+      if (!error.statusCode) {
+        error.statusCode = 500;
+      }
+      next(err);
     });
-  });
 };
 
 const deleteFileHelper = (filePath) => {
