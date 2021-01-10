@@ -1,34 +1,142 @@
+const { validationResult } = require("express-validator");
+const fs = require("fs");
+const path = require("path");
+const Post = require("./../models/post");
+
 exports.getFeeds = (req, res, next) => {
-  res.json({
-    status: "Success",
-    posts: [
-      {
-        _id: "1",
-        title: "A new Post",
-        content: "This is the start of something amazing",
-        imageUrl: "images/girl.jpg",
-        creator: {
-          name: "dro",
-        },
-        createdAt: new Date(),
-      },
-    ],
-  });
+  Post.find()
+    .then((posts) => {
+      res.json({
+        message: "Success",
+        posts,
+      });
+    })
+    .catch(console.log);
 };
 
 exports.postFeed = (req, res, next) => {
   const { content, title } = req.body;
-  res.status(201).json({
-    message: "Post uploaded successfully",
-    post: {
-      _id: "2",
-      title,
-      content,
-      imageUrl: "images/girl.jpg",
-      creator: {
-        name: "dro",
-      },
-      createdAt: new Date(),
+  let errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    const error = new Error("Validation failed. Entered data is incorrect");
+    error.message = errors.array();
+    error.statusCode = 422;
+    throw error;
+  }
+  const image = req.file;
+  if (!image) {
+    let error = new Error("No Image Provided");
+    error.statusCode = 422;
+    throw err;
+  }
+  const post = new Post({
+    content,
+    title,
+    imageUrl: image.path,
+    creator: {
+      name: "Dro",
     },
+  });
+  post
+    .save()
+    .then((post) => {
+      res.status(201).json({
+        message: "Post uploaded successfully",
+        post,
+      });
+    })
+    .catch((err) => {
+      if (!error.statusCode) {
+        error.statusCode = 500;
+      }
+      next(err);
+    });
+};
+
+exports.getPost = (req, res, next) => {
+  const { postId } = req.params;
+  Post.findById(postId)
+    .then((post) => {
+      if (!post) {
+        const error = new Error("Post not found");
+        error.statusCode = 404;
+        throw error;
+      }
+      res.status(200).json({
+        message: "Post Fetched",
+        post,
+      });
+    })
+    .catch((err) => {
+      if (!error.statusCode) {
+        error.statusCode = 500;
+      }
+      next(err);
+    });
+};
+
+exports.putPost = (req, res, next) => {
+  let { content, title } = req.body;
+  let imageUrl = req.body.image;
+  const { postId } = req.params;
+  console.log(req.body);
+  let errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    const error = new Error("Validation failed. Entered data is incorrect");
+    error.message = errors.array();
+    error.statusCode = 422;
+    throw error;
+  }
+  if (req.file) {
+    imageUrl = req.file.path;
+  }
+  if (!imageUrl) {
+    let error = new Error("No Image was sent");
+    error.statusCode = 422;
+    throw error;
+  }
+  Post.findById(postId)
+    .then((post) => {
+      if (!post) {
+        let error = new Error("No Post Found");
+        error.statusCode = 404;
+        throw error;
+      }
+      post.content = content;
+      post.title = title;
+      if (imageUrl !== post.imageUrl) {
+        deleteFileHelper(post.imageUrl);
+      }
+      post.imageUrl = imageUrl;
+      return post.save();
+    })
+    .then((newPost) => {
+      res.status(200).json({ message: "Post Updated", post: newPost });
+    });
+};
+
+exports.deletePost = (req, res) => {
+  const { postId } = req.body;
+  Post.findByIdAndDelete(postId).then((resp) => {
+    if (!resp) {
+      let error = new Error("No Post Found");
+      error.statusCode = 404;
+      throw error;
+    }
+    deleteFileHelper(resp.imageUrl);
+    res.json({
+      message: "Post Successfully Deleted",
+      post: resp,
+    });
+  });
+};
+
+const deleteFileHelper = (filePath) => {
+  filePath = path.join(__dirname, "..", filePath);
+  fs.unlink(filePath, (err) => {
+    if (err) {
+      return console.log(err);
+    }
+    console.log("File Deleted");
   });
 };
