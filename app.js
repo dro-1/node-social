@@ -8,6 +8,7 @@ const socket = require("./util/socket");
 const dbConnector = require("./util/db");
 
 const app = express();
+const server = require("http").createServer(app);
 
 const fileStorage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -76,8 +77,8 @@ app.use((req, res) => {
 });
 
 dbConnector(() => {
-  const server = app.listen(8080, () => {
+  socket.connect(server);
+  server.listen(8080, () => {
     console.log("Server Started");
   });
-  socket.connect(server);
 });

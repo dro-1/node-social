@@ -1,6 +1,7 @@
 const { validationResult } = require("express-validator");
 const fs = require("fs");
 const path = require("path");
+const socket = require("./../util/socket");
 const Post = require("./../models/post");
 const User = require("./../models/user");
 
@@ -13,6 +14,7 @@ exports.getFeeds = (req, res, next) => {
     .then((count) => {
       totalItems = count;
       return Post.find()
+        .sort({ createdAt: -1 })
         .skip((page - 1) * pageLimit)
         .limit(pageLimit)
         .populate("creator", "name");
@@ -106,6 +108,11 @@ exports.postFeed = (req, res, next) => {
       return user.save();
     })
     .then((user) => {
+      const io = socket.getIO();
+      io.emit("posts", {
+        action: "create",
+        post,
+      });
       res.status(201).json({
         message: "Post uploaded successfully",
         post,
