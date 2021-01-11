@@ -2,19 +2,22 @@ const { validationResult } = require("express-validator");
 const fs = require("fs");
 const path = require("path");
 const Post = require("./../models/post");
+const User = require("./../models/user");
 
 exports.getFeeds = (req, res, next) => {
   const page = req.query.page || 1;
   const pageLimit = 2;
   let totalItems;
-  Post.find().countDocuments((count) => {
-    totalItems = count;
-  });
   Post.find()
-    .skip((page - 1) * pageLimit)
-    .limit(pageLimit)
+    .countDocuments()
+    .then((count) => {
+      totalItems = count;
+      return Post.find()
+        .skip((page - 1) * pageLimit)
+        .limit(pageLimit)
+        .populate("creator", "name");
+    })
     .then((posts) => {
-      console.log(posts);
       res.json({
         message: "Success",
         posts,
@@ -48,16 +51,25 @@ exports.postFeed = (req, res, next) => {
     content,
     title,
     imageUrl: image.path,
-    creator: {
-      name: "Dro",
-    },
+    creator: req.userId,
   });
   post
     .save()
     .then((post) => {
+      return User.findById(req.userId);
+    })
+    .then((user) => {
+      user.posts.push(post);
+      return user.save();
+    })
+    .then((user) => {
       res.status(201).json({
         message: "Post uploaded successfully",
         post,
+        creator: {
+          _id: user._id,
+          name: user.name,
+        },
       });
     })
     .catch((error) => {
@@ -117,6 +129,11 @@ exports.putPost = (req, res, next) => {
         error.statusCode = 404;
         throw error;
       }
+      if (post.creator.toString() !== req.userId.toString()) {
+        let error = new Error("User Not Authorized To Perform This Action");
+        error.statusCode = 403;
+        throw error;
+      }
       post.content = content;
       post.title = title;
       if (imageUrl !== post.imageUrl) {
@@ -136,19 +153,35 @@ exports.putPost = (req, res, next) => {
     });
 };
 
-exports.deletePost = (req, res) => {
+exports.deletePost = (req, res, next) => {
   const { postId } = req.body;
-  Post.findByIdAndDelete(postId)
-    .then((resp) => {
-      if (!resp) {
+  let deletedPost;
+  Post.findById(postId)
+    .then((post) => {
+      if (!post) {
         let error = new Error("No Post Found");
         error.statusCode = 404;
         throw error;
       }
-      deleteFileHelper(resp.imageUrl);
+      if (post.creator.toString() !== req.userId.toString()) {
+        let error = new Error("User Not Authorized To Perform This Action");
+        error.statusCode = 403;
+        throw error;
+      }
+      return Post.findByIdAndDelete(postId);
+    })
+    .then((post) => {
+      deletedPost = post;
+      return User.findById(req.userId);
+    })
+    .then((user) => {
+      user.posts.pull(postId);
+      return user.save();
+    })
+    .then((user) => {
+      deleteFileHelper(deletedPost.imageUrl);
       res.json({
         message: "Post Successfully Deleted",
-        post: resp,
       });
     })
     .catch((error) => {
