@@ -1,6 +1,7 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const feedRoutes = require("./routes/feed");
+const authRoutes = require("./routes/auth");
 const path = require("path");
 const multer = require("multer");
 const dbConnector = require("./db");
@@ -50,13 +51,20 @@ app.use((req, res, next) => {
 app.use("/images", express.static(path.join(__dirname, "images")));
 
 app.use("/feed", feedRoutes);
+app.use("/auth", authRoutes);
 
 app.use((error, req, res, next) => {
   console.log(error);
-  const { statusCode, message } = error;
-  res.status(statusCode).json({
-    message,
-  });
+  const { statusCode, message, data } = error;
+  const responseJSON = data
+    ? {
+        message,
+        data,
+      }
+    : {
+        message,
+      };
+  res.status(statusCode).json(responseJSON);
 });
 
 app.use((req, res) => {

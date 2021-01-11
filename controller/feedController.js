@@ -21,11 +21,11 @@ exports.getFeeds = (req, res, next) => {
         totalItems,
       });
     })
-    .catch((err) => {
+    .catch((error) => {
       if (!error.statusCode) {
         error.statusCode = 500;
       }
-      next(err);
+      next(error);
     });
 };
 
@@ -60,11 +60,11 @@ exports.postFeed = (req, res, next) => {
         post,
       });
     })
-    .catch((err) => {
+    .catch((error) => {
       if (!error.statusCode) {
         error.statusCode = 500;
       }
-      next(err);
+      next(error);
     });
 };
 
@@ -82,11 +82,11 @@ exports.getPost = (req, res, next) => {
         post,
       });
     })
-    .catch((err) => {
+    .catch((error) => {
       if (!error.statusCode) {
         error.statusCode = 500;
       }
-      next(err);
+      next(error);
     });
 };
 
@@ -127,6 +127,12 @@ exports.putPost = (req, res, next) => {
     })
     .then((newPost) => {
       res.status(200).json({ message: "Post Updated", post: newPost });
+    })
+    .catch((error) => {
+      if (!error.statusCode) {
+        error.statusCode = 500;
+      }
+      next(error);
     });
 };
 
@@ -145,11 +151,11 @@ exports.deletePost = (req, res) => {
         post: resp,
       });
     })
-    .catch((err) => {
+    .catch((error) => {
       if (!error.statusCode) {
         error.statusCode = 500;
       }
-      next(err);
+      next(error);
     });
 };
 
