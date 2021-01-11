@@ -4,7 +4,8 @@ const feedRoutes = require("./routes/feed");
 const authRoutes = require("./routes/auth");
 const path = require("path");
 const multer = require("multer");
-const dbConnector = require("./db");
+const socket = require("./util/socket");
+const dbConnector = require("./util/db");
 
 const app = express();
 
@@ -75,7 +76,8 @@ app.use((req, res) => {
 });
 
 dbConnector(() => {
-  app.listen(8080, () => {
+  const server = app.listen(8080, () => {
     console.log("Server Started");
   });
+  socket.connect(server);
 });

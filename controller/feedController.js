@@ -32,6 +32,49 @@ exports.getFeeds = (req, res, next) => {
     });
 };
 
+exports.putStatus = (req, res, next) => {
+  let errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    const error = new Error("Validation failed. Entered data is incorrect");
+    error.message = errors.array();
+    error.statusCode = 422;
+    throw error;
+  }
+  User.findById(req.userId)
+    .then((user) => {
+      user.status = req.body.status;
+      return user.save();
+    })
+    .then((user) => {
+      res.status(202).json({
+        message: "Success",
+        status: user.status,
+      });
+    })
+    .catch((error) => {
+      if (!error.statusCode) {
+        error.statusCode = 500;
+      }
+      next(error);
+    });
+};
+
+exports.getStatus = (req, res, next) => {
+  User.findById(req.userId)
+    .then((user) => {
+      res.status(200).json({
+        message: "Success",
+        status: user.status,
+      });
+    })
+    .catch((error) => {
+      if (!error.statusCode) {
+        error.statusCode = 500;
+      }
+      next(error);
+    });
+};
+
 exports.postFeed = (req, res, next) => {
   const { content, title } = req.body;
   let errors = validationResult(req);

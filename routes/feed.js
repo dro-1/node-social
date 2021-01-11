@@ -7,6 +7,17 @@ const isAuth = require("./../middleware/isAuth");
 
 router.get("/posts", isAuth, feedController.getFeeds);
 
+router.get("/status", isAuth, feedController.getStatus);
+
+router.put(
+  "/status",
+  isAuth,
+  body("status", "Status must be not less than 5 alpanumeric characters")
+    .trim()
+    .isLength({ min: 5 }),
+  feedController.putStatus
+);
+
 router.post(
   "/post",
   isAuth,
