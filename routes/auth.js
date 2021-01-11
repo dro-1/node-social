@@ -5,7 +5,7 @@ const User = require("../models/user");
 const router = express.Router();
 
 router.post(
-  "login",
+  "/login",
   [
     body("email", "You entered an invalid email")
       .isEmail()

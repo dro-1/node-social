@@ -7,14 +7,14 @@ exports.getFeeds = (req, res, next) => {
   const page = req.query.page || 1;
   const pageLimit = 2;
   let totalItems;
+  Post.find().countDocuments((count) => {
+    totalItems = count;
+  });
   Post.find()
-    .countDocuments((count) => {
-      totalItems = count;
-      return Post.find()
-        .skip((page - 1) * pageLimit)
-        .limit(pageLimit);
-    })
+    .skip((page - 1) * pageLimit)
+    .limit(pageLimit)
     .then((posts) => {
+      console.log(posts);
       res.json({
         message: "Success",
         posts,
