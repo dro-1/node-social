@@ -193,6 +193,11 @@ exports.putPost = (req, res, next) => {
       return post.save();
     })
     .then((newPost) => {
+      const io = socket.getIO();
+      io.emit("posts", {
+        action: "update",
+        post: newPost,
+      });
       res.status(200).json({ message: "Post Updated", post: newPost });
     })
     .catch((error) => {
@@ -230,6 +235,11 @@ exports.deletePost = (req, res, next) => {
     })
     .then((user) => {
       deleteFileHelper(deletedPost.imageUrl);
+      const io = socket.getIO();
+      io.emit("posts", {
+        action: "delete",
+        post: postId,
+      });
       res.json({
         message: "Post Successfully Deleted",
       });
