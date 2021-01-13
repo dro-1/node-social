@@ -5,8 +5,7 @@ const jwt = require("jsonwebtoken");
 const validator = require("validator").default;
 const trim = validator.trim;
 const normalizeEmail = validator.normalizeEmail;
-
-exports.hello = () => "Hello There";
+const helper = require("./../util/helper");
 
 exports.createUser = async ({ userInput }, req) => {
   const { email, password, name } = userInput;
@@ -89,12 +88,6 @@ exports.createPost = async ({ postInput }, req) => {
     throw error;
   }
   let errors = [];
-  //   if (!validator.isURL(trim(imageUrl))) {
-  //     errors.push({
-  //       value: "imageUrl",
-  //       message: "Invalid URL",
-  //     });
-  //   }
   if (!validator.isLength(trim(content), { min: 5 })) {
     errors.push({
       value: "content",
@@ -137,13 +130,68 @@ exports.createPost = async ({ postInput }, req) => {
   };
 };
 
-exports.getPosts = async ({ noOfPost }, req) => {
+exports.updatePost = async ({ postId, postInput }, req) => {
+  const { imageUrl, title, content } = postInput;
   if (!req.isAuth) {
     const error = new Error("Inauthenticated User");
     error.status = 401;
     throw error;
   }
-  const page = noOfPost;
+  let errors = [];
+  if (!validator.isLength(trim(content), { min: 5 })) {
+    errors.push({
+      value: "content",
+      message: "Content must be 5 or more characters",
+    });
+  }
+  if (!validator.isLength(trim(title), { min: 5 })) {
+    errors.push({
+      value: "title",
+      message: "Title must be 5 or more characters",
+    });
+  }
+  if (errors.length > 0) {
+    const error = new Error("Invalid Input");
+    error.status = 422;
+    error.data = errors;
+    throw error;
+  }
+
+  const post = await Post.findById(postId).populate("creator");
+  if (!post) {
+    const error = new Error("Post not found");
+    error.status = 404;
+    throw error;
+  }
+  if (post.creator._id.toString() !== req.userId) {
+    const error = new Error("Inauthorized User");
+    error.status = 403;
+    throw error;
+  }
+  post.title = title;
+  post.content = content;
+  if (imageUrl) {
+    post.imageUrl = imageUrl;
+  }
+  const savedPost = await post.save();
+  console.log(savedPost);
+  return {
+    ...savedPost._doc,
+    _id: savedPost.id.toString(),
+    createdAt: savedPost.createdAt.toISOString(),
+    updatedAt: savedPost.updatedAt.toISOString(),
+  };
+};
+
+exports.getPosts = async ({ page }, req) => {
+  if (!req.isAuth) {
+    const error = new Error("Inauthenticated User");
+    error.status = 401;
+    throw error;
+  }
+  if (!page) {
+    page = 1;
+  }
   const pageLimit = 2;
   const totalPosts = await Post.find().countDocuments();
   const posts = await Post.find()
@@ -151,7 +199,6 @@ exports.getPosts = async ({ noOfPost }, req) => {
     .limit(pageLimit)
     .sort({ createdAt: -1 })
     .populate("creator");
-  console.log(posts);
   return {
     posts: posts.map((p) => ({
       ...p._doc,
@@ -161,4 +208,96 @@ exports.getPosts = async ({ noOfPost }, req) => {
     })),
     totalPosts,
   };
+};
+
+exports.getPost = async ({ postId }, req) => {
+  if (!req.isAuth) {
+    const error = new Error("Inauthenticated User");
+    error.status = 401;
+    throw error;
+  }
+  const foundPost = await Post.findById(postId).populate("creator");
+  if (!foundPost) {
+    const error = new Error("Post Not Found");
+    error.status = 404;
+    throw error;
+  }
+  return {
+    ...foundPost._doc,
+    _id: foundPost.id.toString(),
+    createdAt: foundPost.createdAt.toISOString(),
+    updatedAt: foundPost.updatedAt.toISOString(),
+  };
+};
+
+exports.deletePost = async ({ postId }, req) => {
+  if (!req.isAuth) {
+    const error = new Error("Inauthenticated User");
+    error.status = 401;
+    throw error;
+  }
+  const post = await Post.findById(postId);
+  if (!post) {
+    const error = new Error("Post not found");
+    error.status = 404;
+    throw error;
+  }
+  if (post.creator.toString() !== req.userId) {
+    const error = new Error("Inauthorized User");
+    error.status = 403;
+    throw error;
+  }
+  helper.deleteFile(post.imageUrl);
+  await Post.findByIdAndDelete(postId);
+  const user = await User.findById(req.userId);
+  user.posts.pull(postId);
+  await user.save();
+
+  return deletedPost._id.toString();
+};
+
+exports.getStatus = async (args, req) => {
+  if (!req.isAuth) {
+    const error = new Error("Inauthenticated User");
+    error.status = 401;
+    throw error;
+  }
+
+  const user = await User.findById(req.userId);
+  if (!user) {
+    const error = new Error("User not found");
+    error.status = 404;
+    throw error;
+  }
+  return user.status;
+};
+
+exports.updateStatus = async ({ status }, req) => {
+  if (!req.isAuth) {
+    const error = new Error("Inauthenticated User");
+    error.status = 401;
+    throw error;
+  }
+  let errors = [];
+  if (!validator.isLength(trim(status), { min: 5 })) {
+    errors.push({
+      value: "title",
+      message: "Title must be 5 or more characters",
+    });
+  }
+  if (errors.length > 0) {
+    const error = new Error("Invalid Input");
+    error.status = 422;
+    error.data = errors;
+    throw error;
+  }
+  const user = await User.findById(req.userId);
+  if (!user) {
+    const error = new Error("User not found");
+    error.status = 404;
+    throw error;
+  }
+  user.status = status;
+  await user.save();
+  return user.status;
 };

@@ -7,6 +7,7 @@ const dbConnector = require("./util/db");
 const graphqlSchema = require("./graphql/schema");
 const graphqlResolver = require("./graphql/resolvers");
 const auth = require("./middleware/auth");
+const helper = require("./util/helper");
 
 const app = express();
 
@@ -54,6 +55,27 @@ app.use((req, res, next) => {
 });
 
 app.use(auth);
+
+app.put("/post-image", (req, res, next) => {
+  if (!req.isAuth) {
+    const error = new Error("Inauthenticated User");
+    error.status = 401;
+    throw error;
+  }
+  if (!req.file) {
+    return res.status(200).json({
+      message: "No Message Provided",
+    });
+  }
+  if (req.body.oldPath) {
+    helper.deleteFile(req.body.oldPath);
+  }
+  console.log(req.file);
+  return res.status(201).json({
+    message: "File Stored",
+    filePath: req.file.path,
+  });
+});
 
 app.use(
   "/graphql",

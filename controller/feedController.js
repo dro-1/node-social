@@ -251,13 +251,3 @@ exports.deletePost = (req, res, next) => {
       next(error);
     });
 };
-
-const deleteFileHelper = (filePath) => {
-  filePath = path.join(__dirname, "..", filePath);
-  fs.unlink(filePath, (err) => {
-    if (err) {
-      return console.log(err);
-    }
-    console.log("File Deleted");
-  });
-};
